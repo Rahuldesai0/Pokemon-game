@@ -5,6 +5,7 @@ from settings import MAP_PATH, TILESIZE
 from tilemap import TileMap
 from player import Player
 from camera import Camera
+from virtual_controls import VirtualControls
 
 # FIXED GAME AREA (20x15 tiles)
 GAME_TILES_W = 16
@@ -46,6 +47,7 @@ class Game:
         # Map and camera sized exactly to 20x15 tiles
         self.map = TileMap(MAP_PATH)
         self.camera = Camera(GAME_WIDTH, GAME_HEIGHT)
+        self.controls = VirtualControls()
 
         # Player start
         start_x = self.map.pixel_width // 2
@@ -66,14 +68,16 @@ class Game:
             elif e.type == pygame.KEYDOWN and e.key == pygame.K_ESCAPE:
                 self.running = False
 
-
-    # ---------------------------------------------------
-    # UPDATE
-    # ---------------------------------------------------
     def update(self, dt):
-        self.player.update(dt)
-        self.camera.update(self.player.rect, self.map.pixel_width, self.map.pixel_height)
+        events = pygame.event.get()
+        for e in events:
+            if e.type == pygame.QUIT:
+                self.running = False
 
+        self.controls.update(events)
+        self.player.update(dt, self.controls.actions)
+
+        self.camera.update(self.player.rect, self.map.pixel_width, self.map.pixel_height)
 
     # ---------------------------------------------------
     # DRAW WORLD INTO FIXED GAME SURFACE (20x15 tiles)
@@ -150,6 +154,7 @@ class Game:
         self.game_surface.blit(overlay, (0, 0))
 
 
+
     # ---------------------------------------------------
     # SCALE TO WINDOW WHILE FITTING WIDTH EXACTLY
     # ---------------------------------------------------
@@ -174,7 +179,8 @@ class Game:
             crop = pygame.Rect(0, (scaled_height - win_h)/2, win_w, win_h)
 
             self.window.blit(final, (0,0), area=crop)
-
+            
+        self.controls.draw(self.window)
         pygame.display.flip()
 
 

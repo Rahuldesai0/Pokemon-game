@@ -57,36 +57,39 @@ class Player:
         self.start_pos = pygame.Vector2(self.rect.x, self.rect.y)
         self.target_pos = pygame.Vector2(tx, ty)
 
-    def update(self, dt):
+    def update(self, dt, actions):
         keys = pygame.key.get_pressed()
 
-        # Handle new movement input ONLY if not moving
+        # Only choose a direction if we're not already moving
         if not self.moving:
-            if keys[pygame.K_LEFT] or keys[pygame.K_a]:
+
+            # MERGE VIRTUAL BUTTONS + KEYBOARD
+            if actions["left"] or keys[pygame.K_LEFT] or keys[pygame.K_a]:
                 self.try_start_move(-1, 0)
-            elif keys[pygame.K_RIGHT] or keys[pygame.K_d]:
+
+            elif actions["right"] or keys[pygame.K_RIGHT] or keys[pygame.K_d]:
                 self.try_start_move(1, 0)
-            elif keys[pygame.K_UP] or keys[pygame.K_w]:
+
+            elif actions["up"] or keys[pygame.K_UP] or keys[pygame.K_w]:
                 self.try_start_move(0, -1)
-            elif keys[pygame.K_DOWN] or keys[pygame.K_s]:
+
+            elif actions["down"] or keys[pygame.K_DOWN] or keys[pygame.K_s]:
                 self.try_start_move(0, 1)
 
-        # Handle tile-step animation
+        # movement interpolation untouched…
         if self.moving:
             self.move_timer += dt
-            t = min(self.move_timer / MOVE_TIME, 1.0)
-
-            # Linear interpolate between tiles
+            t = min(self.move_timer / MOVE_TIME, 1)
             new_x = self.start_pos.x + (self.target_pos.x - self.start_pos.x) * t
             new_y = self.start_pos.y + (self.target_pos.y - self.start_pos.y) * t
             self.rect.x = round(new_x)
             self.rect.y = round(new_y)
 
-            if t >= 1.0:
-                # Snap exactly to tile center
+            if t >= 1:
                 self.rect.x = int(self.target_pos.x)
                 self.rect.y = int(self.target_pos.y)
                 self.moving = False
+
 
     def draw(self, screen, camera):
         draw_x = self.rect.x
