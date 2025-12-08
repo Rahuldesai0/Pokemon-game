@@ -3,7 +3,6 @@ import pygame
 
 class VirtualControls:
     def __init__(self):
-        # True/False actions, matching keyboard movement/actions
         self.actions = {
             "up": False,
             "down": False,
@@ -15,140 +14,113 @@ class VirtualControls:
             "select": False
         }
 
-        # Button rectangles (screen positions)
-        self.btn_up    = pygame.Rect(60, 520, 60, 60)
-        self.btn_down  = pygame.Rect(60, 620, 60, 60)
-        self.btn_left  = pygame.Rect(0, 570, 60, 60)
-        self.btn_right = pygame.Rect(120, 570, 60, 60)
-
-        self.btn_A = pygame.Rect(1100, 580, 80, 80)
-        self.btn_B = pygame.Rect(1000, 630, 70, 70)
-
-        self.btn_start  = pygame.Rect(600, 680, 60, 30)
-        self.btn_select = pygame.Rect(530, 680, 60, 30)
+        # Touch-button rectangles
+        self.buttons = {
+            "up": pygame.Rect(60, 520, 60, 60),
+            "down": pygame.Rect(60, 620, 60, 60),
+            "left": pygame.Rect(0, 570, 60, 60),
+            "right": pygame.Rect(120, 570, 60, 60),
+            "A": pygame.Rect(1100, 580, 80, 80),
+            "B": pygame.Rect(1000, 630, 70, 70),
+            "start": pygame.Rect(600, 680, 60, 30),
+            "select": pygame.Rect(530, 680, 60, 30)
+        }
 
     def update(self, events):
-        # Reset each frame
-        for k in self.actions:
-            self.actions[k] = False
-
         mouse = pygame.mouse.get_pos()
         pressed = pygame.mouse.get_pressed()[0]
 
+        # Reset clean each frame (fixes sticky-touch bug)
+        for name in self.actions:
+            self.actions[name] = False
+
+        # Touch press → button active
         if pressed:
-            if self.btn_up.collidepoint(mouse):
-                self.actions["up"] = True
-            if self.btn_down.collidepoint(mouse):
-                self.actions["down"] = True
-            if self.btn_left.collidepoint(mouse):
-                self.actions["left"] = True
-            if self.btn_right.collidepoint(mouse):
-                self.actions["right"] = True
-
-            if self.btn_A.collidepoint(mouse):
-                self.actions["A"] = True
-            if self.btn_B.collidepoint(mouse):
-                self.actions["B"] = True
-
-            if self.btn_start.collidepoint(mouse):
-                self.actions["start"] = True
-            if self.btn_select.collidepoint(mouse):
-                self.actions["select"] = True
+            for name, rect in self.buttons.items():
+                if rect.collidepoint(mouse):
+                    self.actions[name] = True
 
     def draw(self, surf):
-        # Semi-transparent alpha
         SEMI = 160
+        OPAQUE = 255
 
-        # Helper for pill buttons (Start/Select)
-        def draw_pill(rect, color):
-            pill = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)
-            pygame.draw.rect(pill, color, (0, 0, rect.width, rect.height), border_radius=14)
-            surf.blit(pill, rect.topleft)
-
-        # --------------------------
-        # D-PAD (Up / Down / Left / Right)
-        # --------------------------
+        DEFAULT_COLOR = (200, 200, 200)
+        PRESSED_COLOR = (80, 80, 80)
+        DEFAULT_TEXT = (30, 30, 30)
+        PRESSED_TEXT = (255, 255, 255)
         arrow_color = (20, 20, 20)
 
-        # Common background style
-        def draw_dpad_button(rect):
+        def draw_pill(rect, pressed=False):
+            color = PRESSED_COLOR if pressed else DEFAULT_COLOR
+            alpha = OPAQUE if pressed else SEMI
+            pill = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)
+            pygame.draw.rect(pill, (*color, alpha), (0, 0, rect.width, rect.height), border_radius=14)
+            surf.blit(pill, rect.topleft)
+
+        def draw_dpad_button(rect, pressed=False):
+            color = PRESSED_COLOR if pressed else DEFAULT_COLOR
+            alpha = OPAQUE if pressed else SEMI
             s = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)
-            pygame.draw.rect(s, (255, 255, 255, SEMI), (0, 0, rect.width, rect.height), border_radius=12)
+            pygame.draw.rect(s, (*color, alpha), (0, 0, rect.width, rect.height), border_radius=12)
             surf.blit(s, rect.topleft)
 
-        # Draw shapes
-        draw_dpad_button(self.btn_up)
-        draw_dpad_button(self.btn_down)
-        draw_dpad_button(self.btn_left)
-        draw_dpad_button(self.btn_right)
+        # D-pad
+        BTN = self.buttons
+        draw_dpad_button(BTN["up"], self.actions["up"])
+        draw_dpad_button(BTN["down"], self.actions["down"])
+        draw_dpad_button(BTN["left"], self.actions["left"])
+        draw_dpad_button(BTN["right"], self.actions["right"])
 
-        # Draw arrows
-        # Up
-        pygame.draw.polygon(
-            surf, arrow_color,
-            [(self.btn_up.centerx, self.btn_up.y + 10),
-             (self.btn_up.centerx - 15, self.btn_up.y + 40),
-             (self.btn_up.centerx + 15, self.btn_up.y + 40)]
-        )
-        # Down
-        pygame.draw.polygon(
-            surf, arrow_color,
-            [(self.btn_down.centerx, self.btn_down.bottom - 10),
-             (self.btn_down.centerx - 15, self.btn_down.bottom - 40),
-             (self.btn_down.centerx + 15, self.btn_down.bottom - 40)]
-        )
-        # Left
-        pygame.draw.polygon(
-            surf, arrow_color,
-            [(self.btn_left.x + 10, self.btn_left.centery),
-             (self.btn_left.x + 40, self.btn_left.centery - 15),
-             (self.btn_left.x + 40, self.btn_left.centery + 15)]
-        )
-        # Right
-        pygame.draw.polygon(
-            surf, arrow_color,
-            [(self.btn_right.right - 10, self.btn_right.centery),
-             (self.btn_right.right - 40, self.btn_right.centery - 15),
-             (self.btn_right.right - 40, self.btn_right.centery + 15)]
-        )
+        # Arrows
+        pygame.draw.polygon(surf, arrow_color, [
+            (BTN["up"].centerx, BTN["up"].y + 10),
+            (BTN["up"].centerx - 15, BTN["up"].y + 40),
+            (BTN["up"].centerx + 15, BTN["up"].y + 40)
+        ])
+        pygame.draw.polygon(surf, arrow_color, [
+            (BTN["down"].centerx, BTN["down"].bottom - 10),
+            (BTN["down"].centerx - 15, BTN["down"].bottom - 40),
+            (BTN["down"].centerx + 15, BTN["down"].bottom - 40)
+        ])
+        pygame.draw.polygon(surf, arrow_color, [
+            (BTN["left"].x + 10, BTN["left"].centery),
+            (BTN["left"].x + 40, BTN["left"].centery - 15),
+            (BTN["left"].x + 40, BTN["left"].centery + 15)
+        ])
+        pygame.draw.polygon(surf, arrow_color, [
+            (BTN["right"].right - 10, BTN["right"].centery),
+            (BTN["right"].right - 40, BTN["right"].centery - 15),
+            (BTN["right"].right - 40, BTN["right"].centery + 15)
+        ])
 
-        # --------------------------
-        # A & B Buttons (Circles)
-        # --------------------------
+        # A & B buttons
         font = pygame.font.SysFont("Arial", 28, bold=True)
+        for action in ["A", "B"]:
+            btn = BTN[action]
+            pressed = self.actions[action]
+            color = PRESSED_COLOR if pressed else DEFAULT_COLOR
+            text_color = PRESSED_TEXT if pressed else DEFAULT_TEXT
 
-        # A
-        A_surf = pygame.Surface((self.btn_A.width, self.btn_A.height), pygame.SRCALPHA)
-        pygame.draw.circle(A_surf, (255, 255, 255, SEMI),
-                           (self.btn_A.width//2, self.btn_A.height//2), self.btn_A.width//2)
-        surf.blit(A_surf, self.btn_A.topleft)
+            s = pygame.Surface((btn.width, btn.height), pygame.SRCALPHA)
+            pygame.draw.circle(
+                s,
+                (*color, OPAQUE if pressed else SEMI),
+                (btn.width // 2, btn.height // 2),
+                btn.width // 2
+            )
+            surf.blit(s, btn.topleft)
 
-        textA = font.render("A", True, (30, 30, 30))
-        surf.blit(textA, (self.btn_A.centerx - textA.get_width()//2,
-                          self.btn_A.centery - textA.get_height()//2))
+            surf.blit(font.render(action, True, text_color),
+                (btn.centerx - font.size(action)[0]//2,
+                 btn.centery - font.size(action)[1]//2))
 
-        # B
-        B_surf = pygame.Surface((self.btn_B.width, self.btn_B.height), pygame.SRCALPHA)
-        pygame.draw.circle(B_surf, (255, 255, 255, SEMI),
-                           (self.btn_B.width//2, self.btn_B.height//2), self.btn_B.width//2)
-        surf.blit(B_surf, self.btn_B.topleft)
-
-        textB = font.render("B", True, (30, 30, 30))
-        surf.blit(textB, (self.btn_B.centerx - textB.get_width()//2,
-                          self.btn_B.centery - textB.get_height()//2))
-
-        # --------------------------
-        # START & SELECT (pill-shaped)
-        # --------------------------
+        # Start & Select
         small_font = pygame.font.SysFont("Arial", 18, bold=True)
-
-        draw_pill(self.btn_start, (255, 255, 255, SEMI))
-        textStart = small_font.render("START", True, (30, 30, 30))
-        surf.blit(textStart, (self.btn_start.centerx - textStart.get_width()//2,
-                              self.btn_start.centery - textStart.get_height()//2))
-
-        draw_pill(self.btn_select, (255, 255, 255, SEMI))
-        textSelect = small_font.render("SELECT", True, (30, 30, 30))
-        surf.blit(textSelect, (self.btn_select.centerx - textSelect.get_width()//2,
-                               self.btn_select.centery - textSelect.get_height()//2))
-
+        for key, label in [("start", "START"), ("select", "SELECT")]:
+            draw_pill(BTN[key], self.actions[key])
+            txt_color = PRESSED_TEXT if self.actions[key] else DEFAULT_TEXT
+            surf.blit(
+                small_font.render(label, True, txt_color),
+                (BTN[key].centerx - small_font.size(label)[0]//2,
+                 BTN[key].centery - small_font.size(label)[1]//2)
+            )
