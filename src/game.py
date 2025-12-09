@@ -8,8 +8,8 @@ from camera import Camera
 from virtual_controls import VirtualControls
 from world_manager import MapManager
 import os
+import numpy as np
 
-# FIXED GAME AREA (20x15 tiles)
 GAME_TILES_W = 16
 GAME_TILES_H = 16
 GAME_WIDTH = GAME_TILES_W * TILESIZE
@@ -125,7 +125,6 @@ class Game:
             self.region_popup_text = new_region.replace("_", " ").upper()
             # Show for 5 seconds (visible + fade handled in draw)
             self.region_popup_timer = 2.0
-            print("Player is in:", new_region)
 
         # Decrement popup timer (clamp to zero)
         if self.region_popup_timer > 0:
@@ -179,13 +178,86 @@ class Game:
             overlay.fill((*tint, alpha))
 
         is_night = not (m > SUNRISE_START and m < NIGHT_START)
-        if is_night:
-            for lx, ly, w, h, r in self.map_manager.get_all_lights():
-                cx = lx + w/2
-                cy = ly + h/2
-                sx = int(cx - self.camera.x)
-                sy = int(cy - self.camera.y)
-                pygame.draw.circle(overlay, (0,0,0,0), (sx, sy), int(r))
+        if is_night and alpha > 0:
+
+            max_dark = alpha
+            lights = self.map_manager.get_all_lights()
+
+            px = pygame.surfarray.pixels_alpha(overlay)
+            H = GAME_HEIGHT
+            W = GAME_WIDTH
+
+            falloff = 50
+
+            for Lx, Ly, Lw, Lh, _ in lights:
+
+                # Convert world → screen
+                sx = int(Lx - self.camera.x)
+                sy = int(Ly - self.camera.y)
+                ex = sx + int(Lw)
+                ey = sy + int(Lh)
+
+                # ----- Clamp rectangle to screen -----
+                rsx = max(sx, 0)
+                rsy = max(sy, 0)
+                rex = min(ex, W)
+                rey = min(ey, H)
+
+                # If the rectangle is completely offscreen, skip
+                if rsx >= W or rex <= 0 or rsy >= H or rey <= 0:
+                    continue
+
+                # 1) Full bright region
+                px[rsx:rex, rsy:rey] = 0
+
+                # --------------------
+                # 2) LEFT gradient
+                # --------------------
+                for dx in range(1, falloff):
+                    x = sx - dx
+                    if x < 0:  
+                        break
+                    a = int(max_dark * (dx / falloff))
+
+                    # clamp vertical slice:
+                    px[x, rsy:rey] = np.minimum(px[x, rsy:rey], a)
+
+                # --------------------
+                # 3) RIGHT gradient
+                # --------------------
+                for dx in range(1, falloff):
+                    x = ex + dx
+                    if x >= W:
+                        break
+                    a = int(max_dark * (dx / falloff))
+
+                    px[x, rsy:rey] = np.minimum(px[x, rsy:rey], a)
+
+                # --------------------
+                # 4) TOP gradient
+                # --------------------
+                for dy in range(1, falloff):
+                    y = sy - dy
+                    if y < 0:
+                        break
+                    a = int(max_dark * (dy / falloff))
+
+                    px[rsx:rex, y] = np.minimum(px[rsx:rex, y], a)
+
+                # --------------------
+                # 5) BOTTOM gradient
+                # --------------------
+                for dy in range(1, falloff):
+                    y = ey + dy
+                    if y >= H:
+                        break
+                    a = int(max_dark * (dy / falloff))
+
+                    px[rsx:rex, y] = np.minimum(px[rsx:rex, y], a)
+
+            del px
+
+
 
         surf.blit(overlay, (0,0))
 
