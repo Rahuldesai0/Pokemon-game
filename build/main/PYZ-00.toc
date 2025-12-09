@@ -723,6 +723,9 @@
    'C:\\Program '
    'Files\\WindowsApps\\PythonSoftwareFoundation.Python.3.13_3.13.2544.0_x64__qbz5n2kfra8p0\\Lib\\lzma.py',
    'PYMODULE'),
+  ('map_connections',
+   'D:\\Programs\\Pokemon Attempt\\src\\map_connections.py',
+   'PYMODULE'),
   ('mimetypes',
    'C:\\Program '
    'Files\\WindowsApps\\PythonSoftwareFoundation.Python.3.13_3.13.2544.0_x64__qbz5n2kfra8p0\\Lib\\mimetypes.py',
@@ -2085,6 +2088,9 @@
   ('webbrowser',
    'C:\\Program '
    'Files\\WindowsApps\\PythonSoftwareFoundation.Python.3.13_3.13.2544.0_x64__qbz5n2kfra8p0\\Lib\\webbrowser.py',
+   'PYMODULE'),
+  ('world_manager',
+   'D:\\Programs\\Pokemon Attempt\\src\\world_manager.py',
    'PYMODULE'),
   ('xml',
    'C:\\Program '
