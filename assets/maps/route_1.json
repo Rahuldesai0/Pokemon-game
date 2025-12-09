@@ -19,7 +19,7 @@
          "name":"ledge",
          "objects":[
                 {
-                 "height":30,
+                 "height":20.5,
                  "id":1,
                  "name":"",
                  "properties":[
@@ -31,12 +31,12 @@
                  "rotation":0,
                  "type":"",
                  "visible":true,
-                 "width":192,
+                 "width":182.5,
                  "x":516,
-                 "y":158
+                 "y":167.5
                 }, 
                 {
-                 "height":32,
+                 "height":26,
                  "id":3,
                  "name":"",
                  "properties":[
@@ -48,12 +48,12 @@
                  "rotation":0,
                  "type":"",
                  "visible":true,
-                 "width":186,
-                 "x":258,
-                 "y":160
+                 "width":181.5,
+                 "x":262.5,
+                 "y":163.5
                 }, 
                 {
-                 "height":32,
+                 "height":20,
                  "id":5,
                  "name":"",
                  "properties":[
@@ -65,12 +65,12 @@
                  "rotation":0,
                  "type":"",
                  "visible":true,
-                 "width":186,
-                 "x":259,
+                 "width":177,
+                 "x":264,
                  "y":324
                 }, 
                 {
-                 "height":32,
+                 "height":21,
                  "id":6,
                  "name":"",
                  "properties":[
@@ -82,12 +82,12 @@
                  "rotation":0,
                  "type":"",
                  "visible":true,
-                 "width":186,
+                 "width":184.25,
                  "x":325,
                  "y":486
                 }, 
                 {
-                 "height":32,
+                 "height":23.25,
                  "id":7,
                  "name":"",
                  "properties":[
@@ -99,12 +99,12 @@
                  "rotation":0,
                  "type":"",
                  "visible":true,
-                 "width":354,
-                 "x":543,
+                 "width":344.75,
+                 "x":548.75,
                  "y":646
                 }, 
                 {
-                 "height":32,
+                 "height":23,
                  "id":8,
                  "name":"",
                  "properties":[
@@ -116,12 +116,12 @@
                  "rotation":0,
                  "type":"",
                  "visible":true,
-                 "width":122,
+                 "width":119.5,
                  "x":357,
                  "y":644
                 }, 
                 {
-                 "height":32,
+                 "height":22.5,
                  "id":9,
                  "name":"",
                  "properties":[
@@ -133,12 +133,12 @@
                  "rotation":0,
                  "type":"",
                  "visible":true,
-                 "width":68,
-                 "x":251,
+                 "width":58,
+                 "x":258.75,
                  "y":644
                 }, 
                 {
-                 "height":32,
+                 "height":19.5,
                  "id":10,
                  "name":"",
                  "properties":[
@@ -150,12 +150,12 @@
                  "rotation":0,
                  "type":"",
                  "visible":true,
-                 "width":130,
-                 "x":771,
+                 "width":116.5,
+                 "x":775.5,
                  "y":838
                 }, 
                 {
-                 "height":32,
+                 "height":24,
                  "id":11,
                  "name":"",
                  "properties":[
@@ -167,12 +167,12 @@
                  "rotation":0,
                  "type":"",
                  "visible":true,
-                 "width":124,
+                 "width":119,
                  "x":261,
                  "y":996
                 }, 
                 {
-                 "height":32,
+                 "height":23.25,
                  "id":12,
                  "name":"",
                  "properties":[
@@ -184,7 +184,7 @@
                  "rotation":0,
                  "type":"",
                  "visible":true,
-                 "width":380,
+                 "width":378,
                  "x":515,
                  "y":996
                 }],

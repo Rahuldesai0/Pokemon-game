@@ -19,7 +19,7 @@ NATIVE_HEIGHT = 480
 # Player
 PLAYER_SPEED = 150  # pixels per second
 PLAYER_SIZE = 32    # width/height in pixels (square placeholder)
-
+MOVE_TIME = 0.15
 PLAYER_IMAGE = "assets/entities/player.png"
 
 # MUCH BETTER LIGHTING COLORS (Pokémon-like)

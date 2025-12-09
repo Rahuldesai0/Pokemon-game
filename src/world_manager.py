@@ -51,8 +51,6 @@ class MapManager:
 
         if not os.path.exists(full_path):
             print("MapManager ERROR: cannot find map:", full_path)
-        else:
-            print("File found: ", full_path)
 
         return full_path
 
@@ -120,6 +118,21 @@ class MapManager:
     def get_world_bounds(self):
         return (self.world_left, self.world_top, self.world_width, self.world_height)
 
+
+    # ----------------------------------------------
+    # GET REGION NAME FROM A WORLD-SPACE POSITION
+    # ----------------------------------------------
+    def get_region_of_world(self, wx, wy):
+        """
+        Returns the region (map name) that contains the given world pixel (wx, wy).
+        Returns None if the position is not inside any loaded map.
+        """
+        for name, inst in self.instances.items():
+            if (inst.pixel_x <= wx < inst.pixel_x + inst.map.pixel_width and
+                inst.pixel_y <= wy < inst.pixel_y + inst.map.pixel_height):
+                return name
+        return None
+
     # --------------------------------------------------------
     # LAYERED DRAWING (SORTED BY world_y THEN world_x)
     # --------------------------------------------------------
@@ -167,4 +180,16 @@ class MapManager:
             ox, oy = inst.pixel_x, inst.pixel_y
             for (lx, ly, w, h, r) in inst.map.lights:
                 out.append((lx + ox, ly + oy, w, h, r))
+        return out
+
+    def get_all_ledges(self):
+        out = []
+        for inst in self.instances.values():
+            ox, oy = inst.pixel_x, inst.pixel_y
+            for ledge in inst.map.ledges:
+                r = ledge["rect"]
+                out.append({
+                    "rect": pygame.Rect(r.x + ox, r.y + oy, r.width, r.height),
+                    "dir": ledge["dir"]
+                })
         return out

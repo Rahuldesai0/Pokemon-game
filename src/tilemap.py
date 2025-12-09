@@ -103,6 +103,28 @@ class TileMap:
                 ty = (i // self.width) * self.tile_h
                 self.collisions.append(pygame.Rect(tx, ty, self.tile_w, self.tile_h))
 
+        # --- Load directional ledges ---
+        self.ledges = []
+        for layer in self.data.get("layers", []):
+            if layer.get("type") == "objectgroup" and layer.get("name", "").lower() == "ledge":
+                for obj in layer.get("objects", []):
+                    x = obj.get("x", 0)
+                    y = obj.get("y", 0)
+                    w = obj.get("width", self.tile_w)
+                    h = obj.get("height", self.tile_h)
+
+                    # Get direction property from object
+                    props = {}
+                    for p in obj.get("properties", []):
+                        props[p["name"]] = p["value"]
+
+                    direction = int(props.get("direction", -1))  # 0,1,2,3
+
+                    self.ledges.append({
+                        "rect": pygame.Rect(x, y, w, h),
+                        "dir": direction
+                    })
+
         # -------------------------------
         # LIGHT OBJECTS
         # -------------------------------
