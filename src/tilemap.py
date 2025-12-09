@@ -6,38 +6,55 @@ from typing import Dict
 from settings import TILESIZE, TILESET_FOLDER
 from utils import resource_path
 
+
 class TileMap:
     """
-    Loads a Tiled JSON map that can reference multiple tileset images located under TILESET_FOLDER.
-    Exposes:
-      - width (tiles), height (tiles)
-      - tile_w, tile_h (pixels)
-      - pixel_width, pixel_height
-      - tiles : dict gid -> Surface
-      - layers : list of layer dicts (as in Tiled JSON)
-      - collisions : list of pygame.Rect (from walls layer, index inferred by name)
+    Loads a Tiled .json map including:
+      - properties (world_x, world_y, region)
+      - multiple tilesets
+      - tile layers
+      - collision walls layer
+      - object layer (lights)
     """
 
     def __init__(self, map_json_path: str):
         map_path = resource_path(map_json_path)
+
         with open(map_path, "r", encoding="utf-8") as f:
             self.data = json.load(f)
 
         self.width = self.data["width"]
         self.height = self.data["height"]
-        # map tile size from file (override default TILESIZE)
+
         self.tile_w = self.data.get("tilewidth", TILESIZE)
         self.tile_h = self.data.get("tileheight", TILESIZE)
+
         self.pixel_width = self.width * self.tile_w
         self.pixel_height = self.height * self.tile_h
 
-        # Load all tilesets referenced in JSON (assumes image paths are filenames relative to TILESET_FOLDER)
+        # -------------------------------
+        # MAP PROPERTIES (world_x/world_y)
+        # -------------------------------
+        props_raw = self.data.get("properties", {})
+        if isinstance(props_raw, list):
+            # convert array of {name,value} → dict
+            props = {p.get("name"): p.get("value") for p in props_raw}
+            self.properties = props
+        else:
+            self.properties = props_raw or {}
+
+        # -------------------------------
+        # TILESET PROCESSING
+        # -------------------------------
         self.tiles: Dict[int, pygame.Surface] = {}
+
         for ts in self.data.get("tilesets", []):
             firstgid = ts["firstgid"]
             image_name = ts.get("image")
+
             if not image_name:
                 continue
+
             tileset_path = resource_path(os.path.join(TILESET_FOLDER, image_name))
             image = pygame.image.load(tileset_path).convert_alpha()
 
@@ -55,64 +72,72 @@ class TileMap:
                     x = margin + rx * (tw + spacing)
                     y = margin + ry * (th + spacing)
                     rect = pygame.Rect(x, y, tw, th)
+
                     surf = image.subsurface(rect).copy()
                     self.tiles[gid] = surf
                     gid += 1
 
-        # Store layers array for drawing; Tiled uses order in file
-        self.layers = [layer for layer in self.data.get("layers", []) if layer.get("type") == "tilelayer"]
+        # -------------------------------
+        # LAYERS
+        # -------------------------------
+        self.layers = [l for l in self.data.get("layers", []) if l.get("type") == "tilelayer"]
 
-        # find layers by name (case-insensitive)
         self.layer_map = {}
         for i, layer in enumerate(self.layers):
             name = layer.get("name", "").lower()
             self.layer_map[name] = i
 
-        # Build collision rects from 'walls' layer (layer 2)
+        # -------------------------------
+        # COLLISION LAYER (walls)
+        # -------------------------------
         self.collisions = []
-        walls_index = self.layer_map.get("walls")  # name must be "walls"
-        if walls_index is not None:
-            walls_layer = self.layers[walls_index]
-            arr = walls_layer.get("data", [])
-            for i, gid in enumerate(arr):
+        walls_idx = self.layer_map.get("walls")
+
+        if walls_idx is not None:
+            walls_layer = self.layers[walls_idx]
+            data = walls_layer.get("data", [])
+            for i, gid in enumerate(data):
                 if gid == 0:
                     continue
                 tx = (i % self.width) * self.tile_w
                 ty = (i // self.width) * self.tile_h
                 self.collisions.append(pygame.Rect(tx, ty, self.tile_w, self.tile_h))
 
-        # --- Load light positions from object layer ---
+        # -------------------------------
+        # LIGHT OBJECTS
+        # -------------------------------
         self.lights = []
-        for layer in self.data["layers"]:
-            if layer["type"] == "objectgroup" and layer["name"].lower() == "lights":
-                for obj in layer["objects"]:
+        for layer in self.data.get("layers", []):
+            if layer.get("type") == "objectgroup" and layer.get("name", "").lower() == "lights":
+                for obj in layer.get("objects", []):
                     x = obj["x"]
-                    y = obj["y"]  # Tiled tile-object bottom alignment
+                    y = obj["y"]
                     w = obj["width"]
                     h = obj["height"]
                     r = int(max(w, h) * 0.8)
                     self.lights.append((x, y, w, h, r))
 
-
-
-    def draw_layer(self, surface: pygame.Surface, camera, layer_name: str):
-        """
-        Draw a specific named layer (floor / walls / above).
-        camera.apply accepts pygame.Rect or (x,y).
-        """
+    # --------------------------------------------------------
+    # DRAW ONE LAYER
+    # --------------------------------------------------------
+    def draw_layer(self, surface, camera, layer_name, offset_x=0, offset_y=0):
         idx = self.layer_map.get(layer_name.lower())
         if idx is None:
             return
+
         layer = self.layers[idx]
         data = layer.get("data", [])
+
         for i, gid in enumerate(data):
             if gid == 0:
                 continue
+
             tile = self.tiles.get(gid)
             if tile is None:
                 continue
-            x = (i % self.width) * self.tile_w
-            y = (i // self.width) * self.tile_h
-            # camera.apply can accept a rect to return shifted rect
+
+            x = (i % self.width) * self.tile_w + offset_x
+            y = (i // self.width) * self.tile_h + offset_y
+
             dest = camera.apply(pygame.Rect(x, y, self.tile_w, self.tile_h))
             surface.blit(tile, dest.topleft)

@@ -7,9 +7,9 @@ FPS = 60
 TITLE = "Pokemon Clone"
 
 # Map & tiles
-MAP_PATH = "assets/maps/pallet.json"       # export from Tiled (JSON)
+MAP_PATH = "assets/maps/route_1.json"       # export from Tiled (JSON)
 TILESET_FOLDER = "assets/tilesets"       # where outdoor.png, buildings.png live
-
+MAPS_FOLDER = "assets/maps"
 # Default tile size (will be replaced by map's tile size if available)
 TILESIZE = 32
 
