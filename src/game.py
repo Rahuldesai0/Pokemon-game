@@ -103,7 +103,8 @@ class Game:
             if e.type == pygame.QUIT:
                 self.running = False
 
-        self.controls.update(events)
+        win_w, win_h = self.window.get_size()
+        self.controls.update(events, (win_w, win_h))
 
         # Track region before/after player update
         old_region = self.current_region
@@ -134,45 +135,42 @@ class Game:
         wl, wt, ww, wh = self.map_manager.get_world_bounds()
         self.camera.update(self.player.rect, wl, wt, ww, wh)
 
+    # -------------------------
+    # DRAW WORLD + REGION POPUP
+    # -------------------------
     def draw_native(self):
         surf = self.game_surface
         surf.fill((0,0,0))
 
-        # Layers: draw by layer across all loaded maps
+        # Draw world layers
         layer_order = ["floor", "grass", "walls"]
         self.map_manager.draw_by_layers(surf, self.camera, layer_order)
-
-        # draw player (already world-positioned)
         self.player.draw(surf, self.camera)
-
-        # draw above layers
         self.map_manager.draw_by_layers(surf, self.camera, ["above"])
 
-        # ---------------------------------------------------
-        # DAY/NIGHT LIGHTING + LIGHT OBJECTS
-        # ---------------------------------------------------
+        # DAY/NIGHT LIGHTING
         overlay = pygame.Surface((GAME_WIDTH, GAME_HEIGHT), pygame.SRCALPHA)
         now = datetime.now()
         m = now.hour * 60 + now.minute
 
         if SUNRISE_START <= m < SUNRISE_END:
-            t = (m - SUNRISE_START) / 5
+            t = (m - SUNRISE_START)/5
             tint = lerp_color(LIGHT_NIGHT, LIGHT_MORNING, t)
-            alpha = int(200 * (1 - t))
+            alpha = int(200*(1-t))
         elif SUNRISE_END <= m < SUNSET_START:
             tint = LIGHT_DAY
             alpha = 0
         elif SUNSET_START <= m < SUNSET_END:
-            t = (m - SUNSET_START) / 5
+            t = (m - SUNSET_START)/5
             tint = lerp_color(LIGHT_DAY, LIGHT_EVENING, t)
-            alpha = int(80 * t)
+            alpha = int(80*t)
         elif SUNSET_END <= m < NIGHT_START:
             tint = LIGHT_EVENING
             alpha = 80
         elif NIGHT_START <= m < NIGHT_END:
-            t = (m - NIGHT_START) / 5
+            t = (m - NIGHT_START)/5
             tint = lerp_color(LIGHT_EVENING, LIGHT_NIGHT, t)
-            alpha = int(200 * t)
+            alpha = int(200*t)
         else:
             tint = LIGHT_NIGHT
             alpha = 200
@@ -181,7 +179,6 @@ class Game:
             overlay.fill((*tint, alpha))
 
         is_night = not (m > SUNRISE_START and m < NIGHT_START)
-
         if is_night:
             for lx, ly, w, h, r in self.map_manager.get_all_lights():
                 cx = lx + w/2
@@ -190,132 +187,72 @@ class Game:
                 sy = int(cy - self.camera.y)
                 pygame.draw.circle(overlay, (0,0,0,0), (sx, sy), int(r))
 
-        # apply lighting overlay (popup should be drawn AFTER this)
-        self.game_surface.blit(overlay, (0, 0))
+        surf.blit(overlay, (0,0))
 
-        # -------------------------------
+        # ------------------------
         # REGION POPUP ANIMATION
-        # -------------------------------
+        # ------------------------
         if self.region_popup_timer > 0 or self.region_popup_y > -100:
-            # Desired final Y position (after fully dropped down)
             target_y = 16
-            speed = 400  # pixels per second for slide
+            speed = 400  # px/sec
 
-            dt = self.dt  # delta time stored in update()
+            dt = self.dt
             if self.region_popup_timer > 0:
-                # Slide down
                 self.region_popup_y += speed * dt
                 if self.region_popup_y > target_y:
                     self.region_popup_y = target_y
             else:
-                # Slide up when timer done
                 self.region_popup_y -= speed * dt
-                if self.region_popup_y < -100:
-                    self.region_popup_y = -100
+                if self.region_popup_y < -80-10:  # box height + extra
+                    self.region_popup_y = -80-10
 
-            # Bigger box
-            box_width = 400
-            box_height = 80
-            box_x = (GAME_WIDTH - box_width) // 2
+            # Popup box
+            box_width, box_height = 400, 80
+            box_x = (GAME_WIDTH - box_width)//2
             box_y = int(self.region_popup_y)
 
-            # Background: white rectangle
             rect_surf = pygame.Surface((box_width, box_height))
-            rect_surf.fill((255, 255, 255))  # white background
+            rect_surf.fill((255,255,255))  # white background
+            pygame.draw.rect(rect_surf, (0,0,0), rect_surf.get_rect(), 4)  # border
 
-            # Border: black
-            pygame.draw.rect(rect_surf, (0, 0, 0), rect_surf.get_rect(), 4)
-
-            # Text: black, pixel-style font
-            try:
-                font = pygame.font.Font("PressStart2P.ttf", 32)  # replace with your pixel font
-            except:
-                font = pygame.font.SysFont("Courier", 32, bold=True)  # fallback
-
-            text_surf = font.render(self.region_popup_text, True, (0, 0, 0))
-            text_x = (box_width - text_surf.get_width()) // 2
-            text_y = (box_height - text_surf.get_height()) // 2
-            rect_surf.blit(text_surf, (text_x, text_y))
-
-            # Blit to game_surface
-            self.game_surface.blit(rect_surf, (box_x, box_y))
-        # finished drawing world; UI (virtual controls) will be drawn in present()
-
-    # ---------------------------------------------------
-    # SCALE TO WINDOW WHILE FITTING WIDTH EXACTLY
-    # ---------------------------------------------------
-    def present(self):
-        win_w, win_h = self.window.get_size()
-
-        # scale the game_surface to window width
-        scale = win_w / GAME_WIDTH
-        scaled_height = GAME_HEIGHT * scale
-
-        if scaled_height <= win_h:
-            y_offset = (win_h - scaled_height) // 2
-            final = pygame.transform.scale(self.game_surface, (win_w, int(scaled_height)))
-            self.window.fill((0,0,0))
-            self.window.blit(final, (0, y_offset))
-        else:
-            final = pygame.transform.scale(self.game_surface, (win_w, int(scaled_height)))
-            crop = pygame.Rect(0, (scaled_height - win_h)//2, win_w, win_h)
-            self.window.blit(final, (0,0), area=crop)
-
-        # -------------------------------
-        # REGION POPUP (TOP-LEFT DROPDOWN)
-        # -------------------------------
-        if self.region_popup_timer > 0 or self.region_popup_y > -100:
-            dt = self.dt  # delta time from update()
-
-            target_y = 16
-            speed = 400  # pixels per second
-
-            if self.region_popup_timer > 0:
-                # Slide down
-                self.region_popup_y += speed * dt
-                if self.region_popup_y > target_y:
-                    self.region_popup_y = target_y
-            else:
-                # Slide up
-                self.region_popup_y -= speed * dt
-                if self.region_popup_y < -100:
-                    self.region_popup_y = -100
-
-            # Fade in/out
-            fade = 255
-            if self.region_popup_timer <= 1.0:
-                fade = int(self.region_popup_timer * 255)  # last second fade
-
-            # Bigger box
-            box_width = 400
-            box_height = 80
-            box_x = (win_w - box_width) // 2  # centered horizontally
-            box_y = int(self.region_popup_y)
-
-            # Background
-            rect_surf = pygame.Surface((box_width, box_height), pygame.SRCALPHA)
-            rect_surf.fill((255, 255, 255, fade))
-
-            # Border
-            pygame.draw.rect(rect_surf, (0, 0, 0, fade), rect_surf.get_rect(), 4)
-
-            # Text
             try:
                 font = pygame.font.Font("PressStart2P.ttf", 32)
             except:
                 font = pygame.font.SysFont("Courier", 32, bold=True)
 
-            text_surf = font.render(self.region_popup_text, True, (0, 0, 0))
-            text_surf.set_alpha(fade)
-            text_x = (box_width - text_surf.get_width()) // 2
-            text_y = (box_height - text_surf.get_height()) // 2
-            rect_surf.blit(text_surf, (text_x, text_y))
+            text_surf = font.render(self.region_popup_text, True, (0,0,0))
+            text_rect = text_surf.get_rect(center=(box_width//2, box_height//2))
+            rect_surf.blit(text_surf, text_rect)
 
-            # Draw on top of everything
-            self.window.blit(rect_surf, (box_x, box_y))
+            surf.blit(rect_surf, (box_x, box_y))
+
+    # ----------------------------------------
+    # SCALE TO WINDOW + DRAW UI CONTROLS
+    # ----------------------------------------
+    def present(self):# In your main loop:
+        win_w, win_h = self.window.get_size()
+        self.controls.draw(self.window)
 
 
-        # Draw virtual controls on top
+        # Compute scale to maintain aspect ratio
+        scale_w = win_w / GAME_WIDTH
+        scale_h = win_h / GAME_HEIGHT
+        scale = min(scale_w, scale_h)
+
+        # Scaled game surface size
+        scaled_width = int(GAME_WIDTH * scale)
+        scaled_height = int(GAME_HEIGHT * scale)
+
+        # Offsets for centering (letterbox/pillarbox)
+        offset_x = (win_w - scaled_width)//2
+        offset_y = (win_h - scaled_height)//2
+
+        # Scale and blit game surface
+        final_surf = pygame.transform.scale(self.game_surface, (scaled_width, scaled_height))
+        self.window.fill((0,0,0))  # margins
+        self.window.blit(final_surf, (offset_x, offset_y))
+
+        # Draw scaled UI controls
         self.controls.draw(self.window)
 
         pygame.display.flip()
