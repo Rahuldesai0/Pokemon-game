@@ -35,6 +35,9 @@ class Player:
 
         self.debug = debug
 
+        # NEW: pending warp dict (set when arriving on warp tile)
+        self.pending_warp = None
+
     # -------------------------
     # ledge helper: checks allowed direction
     # ledge_dir: 0=down,1=up,2=left,3=right
@@ -72,8 +75,7 @@ class Player:
                     print(f"[Ledge] test {test_rect} intersects ledge {lr} dir={ledge['dir']} -> allowed={allowed}")
                 if not allowed:
                     return False
-                # if allowed, continue checking walls (an allowed ledge does not bypass walls logic below if you want it too)
-                # Usually ledge object sits visually on top of tiles; we allow passage if direction matches.
+                # if allowed, continue checking walls
 
         # --- 2) Wall collision: if any wall collides, block ---
         for wall in collisions:
@@ -145,6 +147,29 @@ class Player:
                 self.moving = False
                 if self.debug:
                     print(f"[Move] arrived at tile ({self.tile_x},{self.tile_y})")
+
+                # NEW: check for warp when we've arrived on the tile
+                w = self.check_for_warp()
+                if w:
+                    # stash pending warp for game to execute on next update cycle
+                    self.pending_warp = w
+
+    # -------------------------
+    # Check for warp at player's feet (returns warp dict or None)
+    # -------------------------
+    def check_for_warp(self):
+        # check warps from map_manager expanded into world rects
+        warps = self.map_manager.get_all_warps()
+        feet = pygame.Rect(self.rect.x, self.rect.y, TILESIZE, FEET_HEIGHT)
+
+        for warp in warps:
+            if feet.colliderect(warp["rect"]):
+                if self.debug:
+                    print("[Warp] Found warp at feet ->", warp)
+                # return warp dict as-is (contains rect + dest_map/dest_x/dest_y)
+                return warp
+
+        return None
 
     # -------------------------
     # Draw full sprite

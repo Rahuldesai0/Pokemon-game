@@ -32,20 +32,25 @@ class TileMap:
         self.pixel_width = self.width * self.tile_w
         self.pixel_height = self.height * self.tile_h
 
-        # -------------------------------
-        # MAP PROPERTIES (world_x/world_y)
-        # -------------------------------
+        # ---------------------------------------------------
+        # FIX: Load properties BEFORE using them
+        # ---------------------------------------------------
         props_raw = self.data.get("properties", {})
         if isinstance(props_raw, list):
-            # convert array of {name,value} → dict
             props = {p.get("name"): p.get("value") for p in props_raw}
             self.properties = props
         else:
             self.properties = props_raw or {}
 
-        # -------------------------------
+        # ---------------------------------------------------
+        # MAP WORLD POSITION (use properties safely)
+        # ---------------------------------------------------
+        self.world_x = int(self.properties.get("world_x", 0))
+        self.world_y = int(self.properties.get("world_y", 0))
+
+        # ---------------------------------------------------
         # TILESET PROCESSING
-        # -------------------------------
+        # ---------------------------------------------------
         self.tiles: Dict[int, pygame.Surface] = {}
 
         for ts in self.data.get("tilesets", []):
@@ -113,12 +118,11 @@ class TileMap:
                     w = obj.get("width", self.tile_w)
                     h = obj.get("height", self.tile_h)
 
-                    # Get direction property from object
                     props = {}
                     for p in obj.get("properties", []):
                         props[p["name"]] = p["value"]
 
-                    direction = int(props.get("direction", -1))  # 0,1,2,3
+                    direction = int(props.get("direction", -1))
 
                     self.ledges.append({
                         "rect": pygame.Rect(x, y, w, h),
@@ -138,6 +142,26 @@ class TileMap:
                     h = obj["height"]
                     r = int(max(w, h) * 0.8)
                     self.lights.append((x, y, w, h, r))
+
+        # -------------------------------
+        # WARPS (correct syntax)
+        # -------------------------------
+        self.warps = []
+        for layer in self.data.get("layers", []):
+            if layer.get("type") == "objectgroup" and layer.get("name", "").lower() == "doors":
+                for obj in layer.get("objects", []):
+                    raw_props = obj.get("properties", [])
+                    props = {p["name"]: p["value"] for p in raw_props}
+
+                    warp = {
+                        "x": obj["x"] // TILESIZE,
+                        "y": obj["y"] // TILESIZE,
+                        "dest_map": props.get("dest_map"),
+                        "dest_x": props.get("dest_x"),
+                        "dest_y": props.get("dest_y"),
+                    }
+
+                    self.warps.append(warp)
 
     # --------------------------------------------------------
     # DRAW ONE LAYER

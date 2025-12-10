@@ -7,6 +7,7 @@ from player import Player
 from camera import Camera
 from virtual_controls import VirtualControls
 from world_manager import MapManager
+from map_connections import REGION_CONNECTIONS
 from utils import resource_path
 import os
 import numpy as np
@@ -53,38 +54,123 @@ class Game:
         self.region_popup_y = -100  # start above the window
 
         # ---------------------------------------------------
-        # LOAD WORLD USING MAPS_FOLDER ONLY
+        # START/ROOT MAP CONFIG
         # ---------------------------------------------------
-        root_name = None
-        maps_dir = resource_path(MAPS_FOLDER)   # <-- FIX HERE
-        for file in os.listdir(maps_dir):       # <-- FIX HERE
-            if file.endswith(".json"):
-                root_name = os.path.splitext(file)[0]
-                break
+        # The stitched overworld root (maps that form the world)
+        WORLD_ROOT = "pallet_town"
 
-        if root_name is None:
-            raise RuntimeError("ERROR: No .json maps found in MAPS_FOLDER")
+        # The map we want to start in (standalone interior)
+        START_MAP = "pallet_house1_f2"
+        START_TILE_X = 9
+        START_TILE_Y = 10
 
-        self.current_region = root_name
+        # Save the world root so we can rebuild stitched world when needed
+        self.world_root = WORLD_ROOT
 
+        # ---------------------------------------------------
+        # Build the overworld (so we know world offsets), then
+        # immediately load the starting interior as a single map.
+        # ---------------------------------------------------
         self.map_manager = MapManager(maps_folder=MAPS_FOLDER)
-        self.map_manager.build_world(root_name, load_connected=True)
+        # Build overworld now (does not affect player placement)
+        self.map_manager.build_world(WORLD_ROOT, load_connected=True)
 
         self.camera = Camera(GAME_WIDTH, GAME_HEIGHT)
         self.controls = VirtualControls()
 
-        # ---------------------------------------------------
-        # START PLAYER AT CENTER OF ROOT MAP
-        # ---------------------------------------------------
-        root_inst = self.map_manager.instances[root_name]
+        # Load starting map as single (standalone interior)
+        self.map_manager.load_single_map(START_MAP)
 
-        start_x = root_inst.pixel_x + root_inst.map.pixel_width // 2
-        start_y = root_inst.pixel_y + root_inst.map.pixel_height // 2
+        if START_MAP not in self.map_manager.instances:
+            raise RuntimeError(f"Failed to load starting map '{START_MAP}'")
 
+        # current region should reflect the starting map (interior)
+        self.current_region = START_MAP
+
+        # Compute starting pixel position (single-map usually at 0,0)
+        start_inst = self.map_manager.instances[START_MAP]
+        start_x = start_inst.pixel_x + START_TILE_X * TILESIZE
+        start_y = start_inst.pixel_y + START_TILE_Y * TILESIZE
+
+        # Create player inside the starting house map
         self.player = Player(start_x, start_y, self.map_manager)
 
         self.clock = pygame.time.Clock()
         self.running = True
+
+    def execute_warp(self, warp):
+        """
+        Warp dict expected to contain:
+          - dest_map (str)
+          - dest_x (int tile)
+          - dest_y (int tile)
+        """
+        dest_map = warp.get("dest_map")
+        # Ensure numeric dests
+        try:
+            dest_x = int(warp.get("dest_x", 0))
+            dest_y = int(warp.get("dest_y", 0))
+        except Exception:
+            dest_x = 0
+            dest_y = 0
+
+        # ------------------------------
+        # OVERWORLD CASE: dest_map is part of REGION_CONNECTIONS keys
+        # ------------------------------
+        if dest_map in REGION_CONNECTIONS.keys():
+            # Ensure stitched world is available: rebuild from WORLD_ROOT if needed.
+            # NOTE: do NOT use dest_map as root here — use self.world_root that
+            # represents the real overworld root (pallet_town etc).
+            if dest_map not in self.map_manager.instances:
+                self.map_manager.build_world(self.world_root, load_connected=True)
+
+            # If still missing, abort
+            if dest_map not in self.map_manager.instances:
+                return
+
+            inst = self.map_manager.instances[dest_map]
+
+            # Compute world pixel coordinates using map instance offsets
+            world_px = inst.pixel_x + dest_x * TILESIZE
+            world_py = inst.pixel_y + dest_y * TILESIZE
+
+            # Place player in world coords
+            self.player.rect.x = world_px
+            self.player.rect.y = world_py
+            # Keep tile_x/tile_y as map-local tile coordinates
+            self.player.tile_x = dest_x
+            self.player.tile_y = dest_y
+
+            # Update region and debug
+            self.current_region = dest_map
+            
+        # ------------------------------
+        # INTERIOR CASE: dest_map is not in overworld graph → load as single
+        # ------------------------------
+        else:
+            self.map_manager.load_single_map(dest_map)
+
+            if dest_map not in self.map_manager.instances:
+                return
+
+            inst = self.map_manager.instances[dest_map]
+            world_px = inst.pixel_x + dest_x * TILESIZE
+            world_py = inst.pixel_y + dest_y * TILESIZE
+
+            # place player (inst.pixel_x normally 0 for single-map)
+            self.player.rect.x = world_px
+            self.player.rect.y = world_py
+            self.player.tile_x = dest_x
+            self.player.tile_y = dest_y
+
+            self.current_region = dest_map
+            
+        # Re-center camera with correct world bounds
+        wl, wt, ww, wh = self.map_manager.get_world_bounds()
+        self.camera.update(self.player.rect, wl, wt, ww, wh)
+
+        # Hide any popup and reset popup timer
+        self.region_popup_timer = 0.0
 
     # ---------------------------------------------------
     # EVENT HANDLING
@@ -114,6 +200,12 @@ class Game:
         # Player update (movement)
         self.player.update(dt, self.controls.actions)
 
+        # If player stepped on a warp tile (player sets pending_warp when arriving)
+        if getattr(self.player, "pending_warp", None):
+            self.execute_warp(self.player.pending_warp)
+            self.player.pending_warp = None
+            return   # stop update for this frame
+
         # Detect region change by asking map_manager
         new_region = self.map_manager.get_region_of_world(
             self.player.rect.centerx,
@@ -125,7 +217,7 @@ class Game:
             self.current_region = new_region
             # Format popup text (convert _ → space and uppercase)
             self.region_popup_text = new_region.replace("_", " ").upper()
-            # Show for 5 seconds (visible + fade handled in draw)
+            # Show for 2 seconds (visible + fade handled in draw)
             self.region_popup_timer = 2.0
 
         # Decrement popup timer (clamp to zero)
@@ -144,7 +236,7 @@ class Game:
         surf.fill((0,0,0))
 
         # Draw world layers
-        layer_order = ["floor", "grass", "walls"]
+        layer_order = ["floor", "grass", "grass2", "walls"]
         self.map_manager.draw_by_layers(surf, self.camera, layer_order)
         self.player.draw(surf, self.camera)
         self.map_manager.draw_by_layers(surf, self.camera, ["above"])
@@ -217,7 +309,7 @@ class Game:
                 # --------------------
                 for dx in range(1, falloff):
                     x = sx - dx
-                    if x < 0:  
+                    if x < 0:
                         break
                     a = int(max_dark * (dx / falloff))
 
@@ -258,8 +350,6 @@ class Game:
                     px[rsx:rex, y] = np.minimum(px[rsx:rex, y], a)
 
             del px
-
-
 
         surf.blit(overlay, (0,0))
 
@@ -303,10 +393,8 @@ class Game:
     # ----------------------------------------
     # SCALE TO WINDOW + DRAW UI CONTROLS
     # ----------------------------------------
-    def present(self):# In your main loop:
+    def present(self):
         win_w, win_h = self.window.get_size()
-        self.controls.draw(self.window)
-
 
         # Compute scale to maintain aspect ratio
         scale_w = win_w / GAME_WIDTH
@@ -330,7 +418,6 @@ class Game:
         self.controls.draw(self.window)
 
         pygame.display.flip()
-
 
     # ---------------------------------------------------
     # MAIN LOOP
