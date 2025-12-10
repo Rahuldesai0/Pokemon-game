@@ -7,6 +7,7 @@ from player import Player
 from camera import Camera
 from virtual_controls import VirtualControls
 from world_manager import MapManager
+from utils import resource_path
 import os
 import numpy as np
 
@@ -55,7 +56,8 @@ class Game:
         # LOAD WORLD USING MAPS_FOLDER ONLY
         # ---------------------------------------------------
         root_name = None
-        for file in os.listdir(MAPS_FOLDER):
+        maps_dir = resource_path(MAPS_FOLDER)   # <-- FIX HERE
+        for file in os.listdir(maps_dir):       # <-- FIX HERE
             if file.endswith(".json"):
                 root_name = os.path.splitext(file)[0]
                 break
