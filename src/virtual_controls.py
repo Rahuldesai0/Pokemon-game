@@ -1,4 +1,3 @@
-# virtual_controls.py
 import pygame
 
 class VirtualControls:
@@ -14,19 +13,47 @@ class VirtualControls:
             "select": False
         }
 
+        # previous frame (for edge detection)
+        self.prev_actions = self.actions.copy()
+
+        # just pressed (edge)
+        self.just_pressed = {k: False for k in self.actions}
+
     def update(self, events, win_size):
         """
-        Update touch inputs.
-        win_size: (width, height) of window to scale touch correctly
+        Update keyboard + virtual buttons
         """
-        mouse = pygame.mouse.get_pos()
-        pressed = pygame.mouse.get_pressed()[0]
+        # save previous state
+        self.prev_actions = self.actions.copy()
 
-        # Reset each frame
+        # reset
         for key in self.actions:
             self.actions[key] = False
 
-        # Get dynamic button positions
+        # ---------------------------
+        # KEYBOARD INPUT (IMPORTANT)
+        # ---------------------------
+        keys = pygame.key.get_pressed()
+
+        self.actions["up"]    |= keys[pygame.K_UP] or keys[pygame.K_w]
+        self.actions["down"]  |= keys[pygame.K_DOWN] or keys[pygame.K_s]
+        self.actions["left"]  |= keys[pygame.K_LEFT] or keys[pygame.K_a]
+        self.actions["right"] |= keys[pygame.K_RIGHT] or keys[pygame.K_d]
+
+        self.actions["A"] |= (
+            keys[pygame.K_e] or
+            keys[pygame.K_RETURN] or
+            keys[pygame.K_KP_ENTER]
+        )
+
+        self.actions["B"] |= keys[pygame.K_SPACE] or keys[pygame.K_LSHIFT]
+
+        # ---------------------------
+        # VIRTUAL BUTTONS (MOUSE)
+        # ---------------------------
+        mouse = pygame.mouse.get_pos()
+        pressed = pygame.mouse.get_pressed()[0]
+
         buttons = self.get_buttons(win_size)
 
         if pressed:
@@ -34,24 +61,31 @@ class VirtualControls:
                 if rect.collidepoint(mouse):
                     self.actions[key] = True
 
+        # ---------------------------
+        # EDGE DETECTION
+        # ---------------------------
+        for key in self.actions:
+            self.just_pressed[key] = (
+                self.actions[key] and not self.prev_actions[key]
+            )
+
+    # ------------------------------------------------------------------
+
     def get_buttons(self, win_size):
-        """Return button rects dynamically based on window size"""
         w, h = win_size
 
-        # D-pad: bottom-left
         size = int(min(w, h) * 0.08)
         margin = int(size * 0.3)
+
         up = pygame.Rect(margin + size, h - 3*size - 2*margin, size, size)
         down = pygame.Rect(margin + size, h - size - margin, size, size)
         left = pygame.Rect(margin, h - 2*size - margin, size, size)
         right = pygame.Rect(2*size + 2*margin, h - 2*size - margin, size, size)
 
-        # A & B buttons: bottom-right
         a_size = int(size * 1.2)
         a = pygame.Rect(w - 2*a_size - 2*margin, h - 2*a_size - margin, a_size, a_size)
         b = pygame.Rect(w - a_size - margin, h - a_size - 2*margin, a_size, a_size)
 
-        # Start & Select: bottom-center
         s_w, s_h = int(a_size*1.2), int(a_size*0.6)
         start = pygame.Rect(w//2 + margin, h - s_h - margin, s_w, s_h)
         select = pygame.Rect(w//2 - s_w - margin, h - s_h - margin, s_w, s_h)
@@ -61,6 +95,7 @@ class VirtualControls:
             "A": a, "B": b, "start": start, "select": select
         }
 
+    # ------------------------------------------------------------------
     def draw(self, surf):
         w, h = surf.get_size()
         buttons = self.get_buttons((w, h))
@@ -122,3 +157,4 @@ class VirtualControls:
             text_surf = small_font.render(label, True, TEXT_PRESSED if pressed else TEXT_COLOR)
             surf.blit(text_surf, (rect.centerx - text_surf.get_width()//2,
                                    rect.centery - text_surf.get_height()//2))
+

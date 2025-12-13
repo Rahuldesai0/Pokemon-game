@@ -95,9 +95,98 @@ class Game:
         # Create player inside the starting house map
         self.player = Player(start_x, start_y, self.map_manager)
 
+        # -----------------------------
+        # Sign textbox state (UI)
+        # -----------------------------
+        self.signbox_active = False
+        self.signbox_pages = []          # list[list[str]] pages, each page is up to 2 lines
+        self.signbox_page_index = 0
+        self.signbox_current_lines = []  # current 1-2 lines to draw
+        self.signbox_has_more = False
+
+        # Precreate font for textbox (smaller than region popup)
+        try:
+            self.signbox_font = pygame.font.Font("PressStart2P.ttf", 20)
+        except Exception:
+            self.signbox_font = pygame.font.SysFont("Courier", 20, bold=True)
+
         self.clock = pygame.time.Clock()
         self.running = True
 
+    # ---------------------------------------------------
+    # Signbox helpers
+    # ---------------------------------------------------
+    def open_signbox(self, text: str):
+        """
+        Wrap text while respecting explicit '\n'.
+        Groups into pages of 2 lines each.
+        """
+        if not text:
+            return
+
+        box_padding = 16
+        box_width = GAME_WIDTH - 40
+        text_width = box_width - box_padding * 2
+
+        font = self.signbox_font
+
+        lines = []
+
+        # ---------------------------------
+        # 1) Split on explicit newlines FIRST
+        # ---------------------------------
+        raw_lines = text.split("\n")
+
+        for raw in raw_lines:
+            words = raw.split(" ")
+            current = ""
+
+            for w in words:
+                if current == "":
+                    trial = w
+                else:
+                    trial = current + " " + w
+
+                if font.size(trial)[0] <= text_width:
+                    current = trial
+                else:
+                    if current:
+                        lines.append(current)
+                    current = w
+
+            # push leftover (even if empty → blank line)
+            lines.append(current)
+
+        # ---------------------------------
+        # 2) Group into pages of 2 lines
+        # ---------------------------------
+        pages = []
+        for i in range(0, len(lines), 2):
+            pages.append(lines[i:i + 2])
+
+        if not pages:
+            pages = [[""]]
+
+        self.signbox_pages = pages
+        self.signbox_page_index = 0
+        self.signbox_active = True
+        self.signbox_cooldown = True  # prevent immediate re-open
+        self._update_signbox_page()
+
+
+    def _update_signbox_page(self):
+        if not self.signbox_active:
+            self.signbox_current_lines = []
+            self.signbox_has_more = False
+            return
+
+        idx = self.signbox_page_index
+        self.signbox_current_lines = self.signbox_pages[idx] if idx < len(self.signbox_pages) else [""]
+        self.signbox_has_more = (idx < len(self.signbox_pages) - 1)
+
+    # ---------------------------------------------------
+    # Warp executor (unchanged semantics)
+    # ---------------------------------------------------
     def execute_warp(self, warp):
         """
         Warp dict expected to contain:
@@ -143,7 +232,7 @@ class Game:
 
             # Update region and debug
             self.current_region = dest_map
-            
+
         # ------------------------------
         # INTERIOR CASE: dest_map is not in overworld graph → load as single
         # ------------------------------
@@ -164,7 +253,7 @@ class Game:
             self.player.tile_y = dest_y
 
             self.current_region = dest_map
-            
+
         # Re-center camera with correct world bounds
         wl, wt, ww, wh = self.map_manager.get_world_bounds()
         self.camera.update(self.player.rect, wl, wt, ww, wh)
@@ -183,50 +272,89 @@ class Game:
                 self.running = False
 
     def update(self, dt):
-        # store dt for any draw-time needs (we don't use dt inside draw_native)
         self.dt = dt
 
+        # --------------------
+        # EVENTS
+        # --------------------
         events = pygame.event.get()
         for e in events:
             if e.type == pygame.QUIT:
                 self.running = False
 
         win_w, win_h = self.window.get_size()
-        self.controls.update(events, (win_w, win_h))
+        try:
+            self.controls.update(events, (win_w, win_h))
+        except TypeError:
+            self.controls.update(events)
 
-        # Track region before/after player update
-        old_region = self.current_region
+        # --------------------
+        # A BUTTON EDGE DETECT
+        # --------------------
+        keys = pygame.key.get_pressed()
+        kb_A = keys[pygame.K_z] or keys[pygame.K_RETURN] or keys[pygame.K_SPACE]
+        ctrl_A = self.controls.actions.get("A", False)
 
-        # Player update (movement)
-        self.player.update(dt, self.controls.actions)
+        A_now = bool(kb_A or ctrl_A)
+        A_prev = getattr(self, "_A_prev", False)
+        A_pressed = A_now and not A_prev
+        self._A_prev = A_now
 
-        # If player stepped on a warp tile (player sets pending_warp when arriving)
+        # -------------------------
+        # SIGNBOX ACTIVE
+        # -------------------------
+        if self.signbox_active:
+            if A_pressed:
+                if self.signbox_has_more:
+                    self.signbox_page_index += 1
+                    self._update_signbox_page()
+                else:
+                    self.signbox_active = False
+            return  # HARD STOP: no movement, no re-open this frame
+
+        # -------------------------
+        # OPEN SIGN (FIRST PRESS)
+        # -------------------------
+        if A_pressed:
+            sign_text = self.player.check_sign_ahead()
+            if sign_text:
+                self.open_signbox(sign_text)
+                return  # consume input
+
+        # -------------------------
+        # NORMAL GAMEPLAY
+        # -------------------------
+        self.player.update(dt, self.controls)
+
         if getattr(self.player, "pending_warp", None):
             self.execute_warp(self.player.pending_warp)
             self.player.pending_warp = None
-            return   # stop update for this frame
+            return
 
-        # Detect region change by asking map_manager
+        # -------------------------
+        # REGION POPUP
+        # -------------------------
+        old_region = self.current_region
         new_region = self.map_manager.get_region_of_world(
             self.player.rect.centerx,
             self.player.rect.centery
         )
 
-        # Only trigger popup when entering a valid new region
-        if new_region is not None and new_region != old_region:
+        if new_region and new_region != old_region:
             self.current_region = new_region
-            # Format popup text (convert _ → space and uppercase)
             self.region_popup_text = new_region.replace("_", " ").upper()
-            # Show for 2 seconds (visible + fade handled in draw)
             self.region_popup_timer = 2.0
 
-        # Decrement popup timer (clamp to zero)
         if self.region_popup_timer > 0:
             self.region_popup_timer = max(0.0, self.region_popup_timer - dt)
 
-        # Camera clamps to world bounds
+        # -------------------------
+        # CAMERA
+        # -------------------------
         wl, wt, ww, wh = self.map_manager.get_world_bounds()
         self.camera.update(self.player.rect, wl, wt, ww, wh)
+
+
 
     # -------------------------
     # DRAW WORLD + REGION POPUP
@@ -389,6 +517,39 @@ class Game:
             rect_surf.blit(text_surf, text_rect)
 
             surf.blit(rect_surf, (box_x, box_y))
+
+        # ------------------------
+        # SIGN TEXTBOX (same layer as region popup)
+        # ------------------------
+        if self.signbox_active:
+            # Box placement & sizing
+            box_width = GAME_WIDTH - 40
+            box_height = 90
+            box_x = 20
+            box_y = GAME_HEIGHT - box_height - 20
+
+            # box surface
+            box = pygame.Surface((box_width, box_height))
+            box.fill((255,255,255))
+            pygame.draw.rect(box, (0,0,0), box.get_rect(), 4)
+
+            # small pixel font already stored as self.signbox_font
+            font = self.signbox_font
+
+            # draw up to 2 lines (signbox_current_lines provided by open_signbox/_update_signbox_page)
+            y = 16
+            for line in self.signbox_current_lines:
+                txt = font.render(line, True, (0,0,0))
+                box.blit(txt, (16, y))
+                y += 28   # line height
+
+            # arrow if more text exists
+            if self.signbox_has_more:
+                arrow = font.render("->", True, (0,0,0))
+                box.blit(arrow, (box_width - 32, box_height - 32))
+
+            # final blit
+            surf.blit(box, (box_x, box_y))
 
     # ----------------------------------------
     # SCALE TO WINDOW + DRAW UI CONTROLS

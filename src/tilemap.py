@@ -162,6 +162,25 @@ class TileMap:
                     }
 
                     self.warps.append(warp)
+        
+        # -------------------------------
+        # SIGNS (same outer structure as WARPS)
+        # -------------------------------
+        self.signs = []
+        for layer in self.data.get("layers", []):
+            if (
+                layer.get("type") == "objectgroup"
+                and layer.get("name", "").lower() == "signs"
+            ):
+                for obj in layer.get("objects", []):
+                    # keep your old variable style
+                    raw_props = obj.get("properties", [])
+                    props = {p["name"]: p["value"] for p in raw_props}
+
+                    text = props.get("text", "")
+                    r = pygame.Rect(obj["x"], obj["y"], obj.get("width", 0), obj.get("height", 0))
+
+                    self.signs.append({"rect": r, "text": text})
 
     # --------------------------------------------------------
     # DRAW ONE LAYER

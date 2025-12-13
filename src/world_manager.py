@@ -206,6 +206,22 @@ class MapManager:
                     "dest_y": warp["dest_y"]
                 })
         return out
+    
+    # --------------------------------------------------------
+    # Signs
+    # --------------------------------------------------------
+    def get_all_signs(self):
+        out = []
+        for inst in self.instances.values():
+            ox, oy = inst.pixel_x, inst.pixel_y
+            for sg in inst.map.signs:
+                r = sg["rect"]
+                out.append({
+                    "rect": pygame.Rect(r.x + ox, r.y + oy, r.width, r.height),
+                    "text": sg["text"]
+                })
+        return out
+
 
     # --------------------------------------------------------
     # Load ONLY one map (for interiors)
