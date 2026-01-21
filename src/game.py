@@ -226,9 +226,9 @@ class Game:
             # Place player in world coords
             self.player.rect.x = world_px
             self.player.rect.y = world_py
-            # Keep tile_x/tile_y as map-local tile coordinates
-            self.player.tile_x = dest_x
-            self.player.tile_y = dest_y
+            # Set tile_x/tile_y to WORLD tile coordinates (not map-local!)
+            self.player.tile_x = world_px // TILESIZE
+            self.player.tile_y = world_py // TILESIZE
 
             # Update region and debug
             self.current_region = dest_map
@@ -249,14 +249,22 @@ class Game:
             # place player (inst.pixel_x normally 0 for single-map)
             self.player.rect.x = world_px
             self.player.rect.y = world_py
-            self.player.tile_x = dest_x
-            self.player.tile_y = dest_y
+            # Set tile_x/tile_y to WORLD tile coordinates (not map-local!)
+            self.player.tile_x = world_px // TILESIZE
+            self.player.tile_y = world_py // TILESIZE
 
             self.current_region = dest_map
 
         # Re-center camera with correct world bounds
         wl, wt, ww, wh = self.map_manager.get_world_bounds()
-        self.camera.update(self.player.rect, wl, wt, ww, wh)
+
+        # FORCE camera to center on player immediately after warp
+        self.camera.x = self.player.rect.centerx - self.camera.w // 2
+        self.camera.y = self.player.rect.centery - self.camera.h // 2
+
+        # Clamp camera to world bounds
+        self.camera.x = max(wl, min(self.camera.x, wl + ww - self.camera.w))
+        self.camera.y = max(wt, min(self.camera.y, wt + wh - self.camera.h))
 
         # Hide any popup and reset popup timer
         self.region_popup_timer = 0.0
