@@ -198,6 +198,102 @@
          "y":0
         }, 
         {
+         "draworder":"topdown",
+         "id":7,
+         "name":"signs",
+         "objects":[
+                {
+                 "height":21.3333333333333,
+                 "id":15,
+                 "name":"",
+                 "properties":[
+                        {
+                         "name":"text",
+                         "type":"string",
+                         "value":"PALLET TOWN\n\nWhere your journey begins."
+                        }],
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":27.3333333333333,
+                 "x":483.333333333333,
+                 "y":354
+                }, 
+                {
+                 "height":36.6666666666667,
+                 "id":16,
+                 "name":"",
+                 "properties":[
+                        {
+                         "name":"text",
+                         "type":"string",
+                         "value":"Player's House"
+                        }],
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":24.6666666666667,
+                 "x":323.333333333333,
+                 "y":212
+                }, 
+                {
+                 "height":33.3333333333333,
+                 "id":17,
+                 "name":"",
+                 "properties":[
+                        {
+                         "name":"text",
+                         "type":"string",
+                         "value":"Rival's House"
+                        }],
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":18,
+                 "x":615.333333333333,
+                 "y":214
+                }, 
+                {
+                 "height":20.6666666666666,
+                 "id":18,
+                 "name":"",
+                 "properties":[
+                        {
+                         "name":"text",
+                         "type":"string",
+                         "value":"Professor Oak's Lab"
+                        }],
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":24,
+                 "x":708,
+                 "y":514.666666666667
+                }, 
+                {
+                 "height":22.6666666666667,
+                 "id":19,
+                 "name":"",
+                 "properties":[
+                        {
+                         "name":"text",
+                         "type":"string",
+                         "value":"Trainer Tips:\n\nGit gud."
+                        }],
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":24.6666666666667,
+                 "x":354.666666666667,
+                 "y":451.333333333333
+                }],
+         "opacity":1,
+         "type":"objectgroup",
+         "visible":true,
+         "x":0,
+         "y":0
+        }, 
+        {
          "data":[2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 12, 13, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
             2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 20, 21, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
             2, 2, 2, 2, 2, 2, 2, 2, 12, 10, 10, 10, 10, 10, 10, 10, 10, 10, 39, 38, 10, 10, 10, 10, 10, 10, 10, 11, 2, 2, 2, 2, 2, 2, 2, 2,
@@ -325,8 +421,8 @@
          "x":0,
          "y":0
         }],
- "nextlayerid":7,
- "nextobjectid":15,
+ "nextlayerid":8,
+ "nextobjectid":20,
  "orientation":"orthogonal",
  "properties":[
         {

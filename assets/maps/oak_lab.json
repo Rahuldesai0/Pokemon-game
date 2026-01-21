@@ -4,6 +4,68 @@
  "layers":[
         {
          "draworder":"topdown",
+         "id":9,
+         "name":"signs",
+         "objects":[
+                {
+                 "height":16,
+                 "id":3,
+                 "name":"",
+                 "properties":[
+                        {
+                         "name":"text",
+                         "type":"string",
+                         "value":"Onion Frog"
+                        }],
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":20,
+                 "x":389,
+                 "y":266
+                }, 
+                {
+                 "height":21,
+                 "id":4,
+                 "name":"",
+                 "properties":[
+                        {
+                         "name":"text",
+                         "type":"string",
+                         "value":"Barbecue Lizard"
+                        }],
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":15,
+                 "x":424,
+                 "y":264
+                }, 
+                {
+                 "height":18,
+                 "id":5,
+                 "name":"",
+                 "properties":[
+                        {
+                         "name":"text",
+                         "type":"string",
+                         "value":"Wet Turtle"
+                        }],
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":17,
+                 "x":456,
+                 "y":264
+                }],
+         "opacity":1,
+         "type":"objectgroup",
+         "visible":true,
+         "x":0,
+         "y":0
+        }, 
+        {
+         "draworder":"topdown",
          "id":6,
          "name":"lights",
          "objects":[
@@ -227,8 +289,8 @@
          "x":0,
          "y":0
         }],
- "nextlayerid":9,
- "nextobjectid":3,
+ "nextlayerid":10,
+ "nextobjectid":6,
  "orientation":"orthogonal",
  "renderorder":"right-down",
  "tiledversion":"1.11.2",
